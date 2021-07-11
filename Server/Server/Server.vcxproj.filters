@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{f9a5fbfb-53da-4a8b-9e3d-ba5b2e95920a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib">
+      <UniqueIdentifier>{aba5d44e-71d5-4e5b-a8d3-6b6e8ffc9293}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Server.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\mongoose.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Server.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\mongoose.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
