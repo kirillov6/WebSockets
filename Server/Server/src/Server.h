@@ -6,10 +6,13 @@
 class Server
 {
 public:
-    Server(int port, mg_event_handler_t eventHandler);
+    Server(int port);
     ~Server();
 
     void Start();
+
+private:
+    static void EventHandler(mg_connection* conn, int ev, void* ev_data, void* fn_data);
 
 private:
     int m_Port; // Port
