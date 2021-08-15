@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Websocket client</title>
+
+	<script type="text/javascript">
+		serverPort = "8000";
+		var websocket = null;
+
+		function IsWebsocketValid(){
+			return websocket && !(websocket.readyState === WebSocket.CLOSED);
+		}
+
+		function Log(message) {
+			let log = document.getElementById("log");
+			log.value += message + "\n";
+			log.scrollTop = log.scrollHeight;
+		}
+
+		function ClearLog() {
+			document.getElementById("log").value = "";
+		}
+
+		function GetRandom(max) {
+			return Math.floor(Math.random() * max) + 1;
+		}
+
+		function SendMsg(msg) {
+			if (!IsWebsocketValid())
+				return;
+
+			websocket.send(msg);
+		}
+		
+		function Connect() {
+			if (IsWebsocketValid()) {
+				return;
+			}
+
+			let clientId = GetRandom(10000);
+
+			websocket = new WebSocket("ws://localhost:" + serverPort + `/service?id=${clientId}`);
+
+			websocket.onopen = function(e) {
+				Log("[open] Соединение установлено");
+			}
+
+			websocket.onmessage = function(e) {
+				Log(`[message] Данные с сервера: ${e.data}`);
+			}
+
+			websocket.onclose = function(e) {
+				if (e.wasClean) {
+					Log(`[close] Соединение закрыто чисто: код=${e.code}, причина=${e.reason}`);
+				} else {
+					Log('[close] Соединение прервано');
+				}
+			};
+
+			websocket.onerror = function(error) {
+				Log(`[error] ${error.message}`);
+			};
+		}
+
+		function Disconnect() {
+			if (!IsWebsocketValid()) {
+				Log("[info] Соединение не открыто");
+				return;
+			}
+			
+			websocket.close();
+		}
+
+		function Ping() {
+			SendMsg("ping");
+		}
+
+		function TestClose() {
+			SendMsg("closeme");
+		}
+
+		function StartProcess() {
+			SendMsg("startproc");
+		}
+	</script>
+	
+	<style>
+		form {
+		  margin: 0 auto;
+		  width: 600px;
+		  padding: 1em;
+		  border: 1px solid #CCC;
+		  border-radius: 1em;
+		}
+		
+		ul {
+		  list-style: none;
+		  padding: 0;
+		  margin: 0;
+		}
+
+		textarea {
+			width: 600px;
+			height: 300px;
+			box-sizing: border-box;
+			border: 1px solid #999;
+			resize: none;
+		}
+
+		input[type=button] {
+			width: 100px;
+			margin: 3px;
+		}
+
+		.floatRight {
+			float: right;
+		}
+	</style>
+</head>
+
+<body>
+	<form>
+		<ul>
+			<li>
+				<label for="log">Log</label>
+				<input type="button" class="floatRight" onclick="ClearLog();" value="Clear log" />
+			</li>
+			<li>
+				<textarea id="log" readonly></textarea>
+			</li>
+			<li>
+				<input type="button" onclick="Connect();" value="Connect" />
+				<input type="button" onclick="Disconnect();" value="Disconnect" />
+			</li>
+			<li>
+				<input type="button" onclick="Ping();" value="Ping" />
+				<input type="button" onclick="TestClose();" value="Test Close" />
+				<input type="button" onclick="StartProcess();" value="Start process" />
+			</li>
+		</ul>
+	</form>
+</body>
+</html>

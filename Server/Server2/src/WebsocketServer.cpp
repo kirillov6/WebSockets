@@ -1,10 +1,15 @@
 #include "WebsocketServer.h"
+#include "Utils.h"
+#include <thread>
+#include <chrono>
+#include <future>
 
 
 // Static initialization
 websocketpp::server<websocketpp::config::asio> WebsocketServer::m_Server;
 std::map<std::string, websocketpp::connection_hdl> WebsocketServer::m_Websockets;
 std::mutex WebsocketServer::m_WebsocketsMutex;
+std::mutex WebsocketServer::m_SendMutex;
 bool WebsocketServer::m_bInited = false;
 
 
@@ -29,6 +34,7 @@ bool WebsocketServer::Init(int port)
 	m_Server.set_validate_handler(&WebsocketServer::OnValidate);
 	m_Server.set_fail_handler(&WebsocketServer::OnFail);
 	m_Server.set_close_handler(&WebsocketServer::OnClose);
+	m_Server.set_message_handler(&WebsocketServer::OnMessage);
 
 	// Start listen
 	try
@@ -101,6 +107,14 @@ bool WebsocketServer::SendData(const std::string& id, const std::string& data)
 		return false;
 
 	// Send data
+	return SendData(hdl, data);
+}
+
+bool WebsocketServer::SendData(websocketpp::connection_hdl hdl, const std::string& data)
+{
+	std::lock_guard<std::mutex> Guard(m_SendMutex);
+
+	// Send data
 	websocketpp::lib::error_code ec;
 	m_Server.send(hdl, data, websocketpp::frame::opcode::text, ec);
 	if (ec)
@@ -121,7 +135,7 @@ bool WebsocketServer::CloseWebsocket(const std::string& id)
 
 	// Close websocket
 	websocketpp::lib::error_code ec;
-	m_Server.close(hdl, websocketpp::close::status::normal, "", ec);
+	m_Server.close(hdl, websocketpp::close::status::normal, "close request", ec);
 	if (ec)
 		std::cerr << "Error on close websocket " << id << ": " << ec.message();
 
@@ -147,24 +161,16 @@ bool WebsocketServer::GetWebsocket(const std::string& id, websocketpp::connectio
 
 bool WebsocketServer::OnValidate(websocketpp::connection_hdl hdl)
 {
-	// Get data
-	auto con = m_Server.get_con_from_hdl(hdl);
-	auto uri = con->get_uri();
-	auto query = uri->get_query();
-
 	std::string id = "";
-	if (!query.empty())
-	{
-		id = query;
-	}
-	else
-		// Reject validation
-		return false;
+	if (!GetIdFromHdl(hdl, id))
+		return false; // Reject validation
 
 	// Insert into map
 	std::lock_guard<std::mutex> Guard(m_WebsocketsMutex);
-	m_Websockets.insert(std::make_pair(id, hdl));
+	if (m_Websockets.find(id) != m_Websockets.end())
+		return false;
 
+	m_Websockets.insert(std::make_pair(id, hdl));
 	return true;
 }
 
@@ -177,4 +183,72 @@ void WebsocketServer::OnFail(websocketpp::connection_hdl hdl)
 
 void WebsocketServer::OnClose(websocketpp::connection_hdl hdl)
 {
+	std::string id = "";
+	if (!GetIdFromHdl(hdl, id))
+		return;
+
+	// Remove websocket from map
+	std::lock_guard<std::mutex> Guard(m_WebsocketsMutex);
+	m_Websockets.erase(id);
+}
+
+void WebsocketServer::OnMessage(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg)
+{
+	auto message = msg->get_payload();
+
+	if (message == "ping")
+		SendData(hdl, "pong");
+
+	if (message == "closeme")
+	{
+		std::string id = "";
+		GetIdFromHdl(hdl, id);
+		CloseWebsocket(id);
+	}
+
+	if (message == "startproc")
+	{
+		//for (int i = 0; i < 5; ++i)
+		//{
+		//	std::thread{
+		//		[&]() {
+		//		auto start = std::chrono::high_resolution_clock::now();
+		//		// Sleep for 1-3 seconds
+		//		std::this_thread::sleep_for(std::chrono::seconds(rand() % 3 + 1));
+		//		auto end = std::chrono::high_resolution_clock::now();
+		//		std::chrono::duration<double, std::milli> elapsed = end - start;
+
+		//		std::string response = "I slept " + std::to_string(elapsed.count()) + " ms";
+		//		SendData(hdl, response);
+		//		}
+		//	}.detach();
+		//}
+	}
+}
+
+bool WebsocketServer::GetIdFromHdl(websocketpp::connection_hdl hdl, std::string& id)
+{
+	id = "";
+
+	auto con = m_Server.get_con_from_hdl(hdl);
+	auto uri = con->get_uri();
+	std::string query = uri->get_query();
+
+	if (!query.empty())
+	{
+		auto tokens = utils::SplitString(query, "&");
+		size_t pos;
+		for (const auto& token : tokens)
+			if ((pos = token.find("id=")) != std::string::npos)
+			{
+				id = token.substr(3);
+				break;
+			}
+		if (id.empty())
+			return false;
+	}
+	else
+		return false;
+
+	return true;
 }

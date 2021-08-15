@@ -15,7 +15,7 @@ int main()
 			port = std::stoi(sPort);
 			isValidPort = true;
 		}
-		catch (const std::exception& e)
+		catch (const std::exception&)
 		{
 			std::cout << "Bad port format, try again: ";
 		}
