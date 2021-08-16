@@ -4,6 +4,7 @@
 	<title>Websocket client</title>
 
 	<script type="text/javascript">
+		serverHost = "localhost"
 		serverPort = "8000";
 		var websocket = null;
 
@@ -39,7 +40,7 @@
 
 			let clientId = GetRandom(10000);
 
-			websocket = new WebSocket("ws://localhost:" + serverPort + `/service?id=${clientId}`);
+			websocket = new WebSocket("ws://" + serverHost + ":" + serverPort + `/service?id=${clientId}`);
 
 			websocket.onopen = function(e) {
 				Log("[open] Соединение установлено");
